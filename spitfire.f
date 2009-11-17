@@ -799,7 +799,7 @@ c	OLD: Assume moisture content of livegrass close to 1.0 ? NO
      *    fuel_100hr_total,
      *    dead_fuel,char_moistfactor, ratio_dead_fuel,ratio_live_fuel,
      *    dlm_1hr,dlm_10hr, dlm_100hr, dlm_1000hr,year,
-     *    alpha, sigma_1hr, sigma_10hr, sigma100hr ) ! changed to account for alpha calibration
+     *    alpha, sigma_1hr, sigma_10hr, sigma_100hr ) ! changed to account for alpha calibration
 
          if (d_fdi(d).gt.0.0) then
            mfdi(m)= mfdi(m)+d_fdi(d)
@@ -1514,7 +1514,7 @@ c
      *    fuel_10hr_total, nesterov,
      *    fuel_100hr_total,dead_fuel,char_moistfactor,ratio_dead_fuel,
      *    ratio_live_fuel,dlm_1hr,dlm_10hr, dlm_100hr, dlm_1000hr,
-     *    year, alpha, sigma_1hr, sigma_10hr, sigma100hr )
+     *    year, alpha, sigma_1hr, sigma_10hr, sigma_100hr )
 
       implicit none
 
