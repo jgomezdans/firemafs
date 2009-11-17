@@ -17,7 +17,7 @@ c     Biomass destruction through disturbance by fire
      * d_fuel_consumed, d_i_surface,cf, fbd_a, fbd_b, fbd_C3_livegrass,
      * fbd_C4_livegrass,sigma_1hr,sigma_10hr,sigma_100hr,
      * moistfactor_livegrass,moistfactor_1hr, moistfactor_10hr,
-     * moistfactor_100hr,moistfactor_1000hr )
+     * moistfactor_100hr,moistfactor_1000hr, alpha )
 
 cf2py intent(in) dw1, present, tree, lat, mw1
 cf2py intent(in) popden, a_nd, height, height_class, dbh
@@ -63,6 +63,7 @@ c     calorific heat content (kJ/kg)
 c     surface-area-to-volume ratio (cm/cm��)
 c     This comes from python
       real sigma_1hr,sigma_10hr,sigma_100hr
+      real alpha
 c         parameter(sigma_1hr=66.0,sigma_10hr=3.58,sigma_100hr=0.98)
 c     ALLAN
        real sigma_1000hr
@@ -797,8 +798,8 @@ c	OLD: Assume moisture content of livegrass close to 1.0 ? NO
      *    d,moistfactor,fuel_1hr_total,fuel_10hr_total, nesterov,
      *    fuel_100hr_total,
      *    dead_fuel,char_moistfactor, ratio_dead_fuel,ratio_live_fuel,
-     *    dlm_1hr,dlm_10hr, dlm_100hr, dlm_1000hr,year)
-
+     *    dlm_1hr,dlm_10hr, dlm_100hr, dlm_1000hr,year,
+     *    alpha, sigma_1hr, sigma_10hr, sigma100hr ) ! changed to account for alpha calibration
 
          if (d_fdi(d).gt.0.0) then
            mfdi(m)= mfdi(m)+d_fdi(d)
