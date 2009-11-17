@@ -17,7 +17,8 @@ c     Biomass destruction through disturbance by fire
      * d_fuel_consumed, d_i_surface,cf, fbd_a, fbd_b, fbd_C3_livegrass,
      * fbd_C4_livegrass,sigma_1hr,sigma_10hr,sigma_100hr,
      * moistfactor_livegrass,moistfactor_1hr, moistfactor_10hr,
-     * moistfactor_100hr,moistfactor_1000hr, alpha )
+     * moistfactor_100hr,moistfactor_1000hr, alpha,
+     * moisture_extinction )
 
 cf2py intent(in) dw1, present, tree, lat, mw1
 cf2py intent(in) popden, a_nd, height, height_class, dbh
@@ -41,7 +42,7 @@ cf2py intent(in) fbd_a, fbd_b, fbd_C3_livegrass, fbd_C4_livegrass
 cf2py intent(in) sigma_1hr,sigma_10hr,sigma_100hr
 cf2py intent(in) moistfactor_100hr,moistfactor_1000hr
 cf2py intent(in) moistfactor_livegrass,moistfactor_1hr, moistfactor_10hr
-
+cf2py intent(in) alpha, moisture_extinction
       implicit none
 
 c     PARAMETERS
@@ -92,7 +93,7 @@ c       parameter (fire_durat=240.0)
 c	LPJ limited to daily timestep.  This is assumed to be the  
 c	maximum fire duration during the 
 c	mid-high latitude summer or sub- /equatorial dry season.	
-
+       real moisture_extinction ( 1:npft)
        real d_fuel_consumed(1:365)
        real fbd_a  
        real fbd_b  
@@ -353,7 +354,8 @@ c        Calculate litter moisture weighting factor (moisture of extinction me)
       moistfactor=0.0
 
       do pft=1,npft
-        me=pftpar(pft,6)
+!        me=pftpar(pft,6)
+         me = moisture_extinction ( pft )
         if (litter_ag_total.gt.0.0) then
           moistfactor=moistfactor+(litter_ag(pft)/litter_ag_total)*me
         else
