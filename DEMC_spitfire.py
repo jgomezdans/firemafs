@@ -10,6 +10,9 @@ class CalibrateSPITFIRE ( DEMC_sampler ):
 		self._ReadData ( )
 		
 	def _ReadData ( self ):
+		"""
+		This function reads the observations data from the database, and stores the results in the class.
+		"""
 		s = SpitfireDB()
 		self.datos = s.GetSpinUpVars ( self.grid_id, self.year )
 		self.modis_ba = s.GetMODISBA ( self.grid_id, self.year )
@@ -17,6 +20,10 @@ class CalibrateSPITFIRE ( DEMC_sampler ):
 		self.modis_fmc = s.GetMODISFMC ( self.grid_id, self.year )
 
 	def likelihood_function ( self, theta ):
+		"""
+		Simple (log)likelihood function. It assumes independent distributions for annual mismatch between model and data. The newer version ought to have some MVG version of this, but
+		it probably implies assuming stuff on priors...
+		"""
 		error_ba = self.modis_ba.sum()/10.
 		error_fmc = self.modis_fmc.sum()/20.
 		error_num_fires = self.modis_num_fires.sum()/20.
@@ -28,3 +35,6 @@ class CalibrateSPITFIRE ( DEMC_sampler ):
 		p_fmc = numpy.log ( scipy.stats.norm.pdf ( modis_ba_fmc, 0.0, error_fmc ))
 		p_num_fires = numpy.log ( scipy.stats.norm.pdf ( modis_num_fires, 0.0, error_num_fires ))
 		return p_ba + p_fmc + p_num_fires
+
+	#def fwd_model ( self ):
+		
