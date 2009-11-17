@@ -1512,7 +1512,8 @@ c
      *    dtemp_max,dprec,d,moistfactor,fuel_1hr_total,
      *    fuel_10hr_total, nesterov,
      *    fuel_100hr_total,dead_fuel,char_moistfactor,ratio_dead_fuel,
-     *    ratio_live_fuel,dlm_1hr,dlm_10hr, dlm_100hr, dlm_1000hr,year)
+     *    ratio_live_fuel,dlm_1hr,dlm_10hr, dlm_100hr, dlm_1000hr,
+     *    year, alpha, sigma_1hr, sigma_10hr, sigma100hr )
 
       implicit none
 
@@ -1523,13 +1524,14 @@ c
       real fuel_1hr_total,fuel_10hr_total,fuel_100hr_total
       real dead_fuel
       integer d,year
-
-      real alpha      
-        parameter (alpha=0.0015)
+      real sigma_1hr, sigma_100hr, sigma_10hr ! Needed to calculate \alpha for dead fuel moisture
+      real alpha
+c        parameter (alpha=0.0015)
       real alpha_1hr, alpha_10hr,alpha_100hr
       real alpha_livegrass,alpha_1000hr
-        parameter (alpha_1hr=0.001,alpha_10hr=0.00005424) 
-        parameter (alpha_100hr=0.00001485, alpha_1000hr = 0.000001) 
+
+c        parameter (alpha_1hr=0.001,alpha_10hr=0.00005424) 
+c        parameter (alpha_100hr=0.00001485, alpha_1000hr = 0.000001) 
 c        parameter (alpha_livegrass=0.0005) 
 c     Allan: Alpha values for livegrass and 1000hr dead fuels are particularly
 c            subjective 
@@ -1549,7 +1551,9 @@ c     initialise
       d_NI=0.0
       fdi_spread=0.0
       alpha_fuel=0.0
-
+      alpha_1hr = alpha
+      alpha_10hr = alpha/(sigma_1hr/sigma_10hr)
+      alpha_100hr = alpha/(sigma_1hr/sigma_100hr)
 c     calculate Nesterov Index   equ. (2)
         if (dprec(d).le.3.0.and.(dtemp_min(d)-4.0).ge.0.0) then
 
