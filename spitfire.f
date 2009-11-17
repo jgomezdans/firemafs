@@ -18,7 +18,7 @@ c     Biomass destruction through disturbance by fire
      * fbd_C4_livegrass,sigma_1hr,sigma_10hr,sigma_100hr,
      * moistfactor_livegrass,moistfactor_1hr, moistfactor_10hr,
      * moistfactor_100hr,moistfactor_1000hr, alpha,
-     * moisture_extinction )
+     * moisture_extinction, moisture_conversion, duration_exponential )
 
 cf2py intent(in) dw1, present, tree, lat, mw1
 cf2py intent(in) popden, a_nd, height, height_class, dbh
@@ -43,6 +43,7 @@ cf2py intent(in) sigma_1hr,sigma_10hr,sigma_100hr
 cf2py intent(in) moistfactor_100hr,moistfactor_1000hr
 cf2py intent(in) moistfactor_livegrass,moistfactor_1hr, moistfactor_10hr
 cf2py intent(in) alpha, moisture_extinction
+cf2py intent(in) moisture_conversion, duration_exponential
       implicit none
 
 c     PARAMETERS
@@ -79,6 +80,7 @@ c             of dead fuel
 c      Check this approach vs. me as a PFT parameter.
        real moistfactor_livegrass,moistfactor_1hr, moistfactor_10hr
        real moistfactor_100hr,moistfactor_1000hr
+       real moisture_conversion, duration_exponential
 c       parameter (moistfactor_livegrass = 0.398)   
 !        parameter (moistfactor_livegrass=0.2)
 !        parameter (moistfactor_1hr = 0.404)         
@@ -723,8 +725,10 @@ c    livegrass
        if (livegrass.gt.0.0) then
 c    KIRSTEN: calculate leaf moisture content of grasses from dw1
 c    ACHTUNG: change with water scalar value for grasses
-       dlm_lg(d) = max(0.0,((10.0/9.0)*dw1(d)-(1.0/9.0)))
-
+c      ORIGINAL representation
+c       dlm_lg(d) = max(0.0,((10.0/9.0)*dw1(d)-(1.0/9.0)))
+       dlm_lg(d) = max(0.0,(( moisture_conversion )*dw1(d)-
+     * (moisture_conversion-1)))
        ratio_C3_livegrass = pot_fc_lg(8) / livegrass
        ratio_C4_livegrass = pot_fc_lg(9) / livegrass
        else
@@ -940,7 +944,10 @@ c	check the parameter value
 c     fire duration as a function of d_fdi
 c          fire_durat=301.0/(1.0+(((301.0/1.)-1.)*exp(-11.4*d_fdi(d))))
 c           fire_durat=361.0/(1.0+(((361.0/1.)-1.)*exp(-11.76*d_fdi(d))))
-          fire_durat=241.0/(1.0+(((241.0/1.)-1.)*exp(-10.95*d_fdi(d))))
+c        ORIGINAL
+c          fire_durat=241.0/(1.0+(((241.0/1.)-1.)*exp(-10.95*d_fdi(d))))
+          fire_durat = 241./( 1.0 +
+     *    (240.* exp(-duration_exponential*d_fdi(d))))
           db(d)=ros_b(d)*fire_durat 
           df(d)=ros_f(d)*fire_durat
        else
