@@ -8,11 +8,11 @@ Calibration datasets:
 3.- Monthly number of fires
 4.- 
 Parameters to calibrate:
-1.- Fuel Buld Density (per PFT)
-2.- Surface Areat to Volume ratios (per fuel class)
-3.- aNd
-4.- Maximum fire duration (mins)
-5.- Fire duration exponential weight
-6.- Dead fuel moisture alpha 1hr (all others are derived from this using \sigma)
-7.- Live grass moisture (parameter)
-8.- Moisture of extinction (two parameters, but it is a PFT variable?)
+1.- Fuel Buld Density (per PFT) DONE?
+2.- Surface Areat to Volume ratios (per fuel class) DONE?
+3.- aNd DONE?
+4.- Maximum fire duration (mins) Just leave it as it is!
+5.- Fire duration exponential weight... Needs change! DONE
+6.- Dead fuel moisture alpha 1hr (all others are derived from this using \sigma) DONE
+7.- Live grass moisture
+8.- Moisture of extinction (per pft parameter): DONE
