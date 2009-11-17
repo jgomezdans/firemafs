@@ -1,0 +1,18 @@
+Synthetic observations:
+1.- RoS <= Windspeed!
+2.- Residence Time <= 8m
+
+Calibration datasets:
+1.- Monthly Burnt area
+2.- 8-daily fuel moisture content
+3.- Monthly number of fires
+4.- 
+Parameters to calibrate:
+1.- Fuel Buld Density (per PFT)
+2.- Surface Areat to Volume ratios (per fuel class)
+3.- aNd
+4.- Maximum fire duration (mins)
+5.- Fire duration exponential weight
+6.- Dead fuel moisture alpha 1hr (all others are derived from this using \sigma)
+7.- Live grass moisture (parameter)
+8.- Moisture of extinction (two parameters, but it is a PFT variable?)
