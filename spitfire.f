@@ -14,10 +14,11 @@ c     Biomass destruction through disturbance by fire
      *  acflux_trace,m_fc_crown,an_fc_crown,m_i_surface,an_i_surface,
      *  dlm_lg, dlm_1hr,dlm_10hr,
      * nesterov, fire_durat, d_area_burnt, d_numfire, ros_f, ros_b,d_lb,
-     * d_fuel_consumed, d_i_surface,cf, fbd_a, fbd_b, fbd_C3_livegrass,
+     * d_fuel_consumed, d_i_surface,cf, fbd_C3_livegrass,
      * fbd_C4_livegrass,sigma_1hr,sigma_10hr,sigma_100hr,
-     * moistfactor_livegrass,moistfactor_1hr, moistfactor_10hr,
-     * moistfactor_100hr,moistfactor_1000hr, alpha,
+c     * moistfactor_livegrass,moistfactor_1hr, moistfactor_10hr,
+c     * moistfactor_100hr,moistfactor_1000hr,
+     * alpha,
      * moisture_extinction, moisture_conversion, duration_exponential )
 
 cf2py intent(in) dw1, present, tree, lat, mw1
@@ -38,7 +39,8 @@ cf2py intent(out) acflux_trace,m_fc_crown,an_fc_crown,m_i_surface,an_i_surface
 cf2py intent(out) d_fdi, dlm_lg, dlm_1hr, dlm_10hr, nesterov
 cf2py intent(out) fire_durat, d_area_burnt, d_numfire, ros_f, ros_b,d_lb
 cf2py intent(out) d_fuel_consumed, d_i_surface, cf
-cf2py intent(in) fbd_a, fbd_b, fbd_C3_livegrass, fbd_C4_livegrass
+cf2py intent(in) fbd_C3_livegrass, fbd_C4_livegrass
+
 cf2py intent(in) sigma_1hr,sigma_10hr,sigma_100hr
 cf2py intent(in) moistfactor_100hr,moistfactor_1000hr
 cf2py intent(in) moistfactor_livegrass,moistfactor_1hr, moistfactor_10hr
@@ -81,12 +83,12 @@ c      Check this approach vs. me as a PFT parameter.
        real moistfactor_livegrass,moistfactor_1hr, moistfactor_10hr
        real moistfactor_100hr,moistfactor_1000hr
        real moisture_conversion, duration_exponential
-c       parameter (moistfactor_livegrass = 0.398)   
-!        parameter (moistfactor_livegrass=0.2)
-!        parameter (moistfactor_1hr = 0.404)         
-!        parameter (moistfactor_10hr = 0.487)        
-!        parameter (moistfactor_100hr = 0.525)      
-!        parameter (moistfactor_1000hr = 0.544)    
+c       parameter (moistfactor_livegrass = 0.398)
+        parameter (moistfactor_livegrass=0.2)
+        parameter (moistfactor_1hr = 0.404)
+        parameter (moistfactor_10hr = 0.487)
+        parameter (moistfactor_100hr = 0.525)
+        parameter (moistfactor_1000hr = 0.544)
 
 c     fire duration (min)
       real fire_durat
