@@ -40,7 +40,6 @@ cf2py intent(out) d_fdi, dlm_lg, dlm_1hr, dlm_10hr, nesterov
 cf2py intent(out) fire_durat, d_area_burnt, d_numfire, ros_f, ros_b,d_lb
 cf2py intent(out) d_fuel_consumed, d_i_surface, cf
 cf2py intent(in) fbd_C3_livegrass, fbd_C4_livegrass
-
 cf2py intent(in) sigma_1hr,sigma_10hr,sigma_100hr
 cf2py intent(in) moistfactor_100hr,moistfactor_1000hr
 cf2py intent(in) moistfactor_livegrass,moistfactor_1hr, moistfactor_10hr
