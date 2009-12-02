@@ -76,7 +76,7 @@ class DEMC_sampler(object):
 		self.CreateObservations ()
 		
 	def CreateObservations ( self, x=3, b=0.1):
-		x=numpy.r_[-5:5:.5]
+		x=numpy.r_[-5:5:.2]
 		a=3
 		b=0.1
 		x1=a*x+b
@@ -157,7 +157,7 @@ class DEMC_sampler(object):
 
 	def likelihood_function ( self, theta, W):
 
-		x = numpy.r_[-5:5:.5]
+		x = numpy.r_[-5:5:.2]
 		fwd = theta[0]*x + theta[1]
 		D = fwd[:,numpy.newaxis]-self.observations
 		
@@ -225,10 +225,13 @@ class DEMC_sampler(object):
 			#pdb.set_trace()
 			if rhat<numpy.sqrt(V_hat/W):
 				rhat = numpy.sqrt(V_hat/W)
-			print numpy.sqrt(V_hat/W)
-			print [scipy.stats.scoreatpercentile ( x.flatten(1), percentile) for percentile in [2.5, 25., 50., 75., 97.5] ]
-			print x.flatten(1).mean(), x.flatten(1).std()
-		print "---------------------------------------------------------"
+			print "+--------------------------------------------------------------------------------------------------+"
+			print "| %12.4g "%(numpy.sqrt(V_hat/W)),
+			for percentile in [2.5, 25, 50, 75, 97.5]:
+				print "|%8.2g "%(scipy.stats.scoreatpercentile ( x.flatten(1), percentile)),
+			#print "%8g | %8g | %8g | %8g | %8g" % [scipy.stats.scoreatpercentile ( x.flatten(1), percentile) for percentile in [2.5, 25., 50., 75., 97.5] ]
+			print "| %8.2g | %8.2g"%(x.flatten(1).mean(), x.flatten(1).std())
+		print "==============================================================================="
 		return rhat
 			
 			
@@ -258,6 +261,9 @@ class DEMC_sampler(object):
 		d = 2
 		X = Z[:,:self.num_population]
 		Xw = Zw[:,:,:self.num_population]
+		# We want to get the lower diagonal and main diagonal elements.
+		# Not the cleanest implementation...
+		diag_elements = numpy.nonzero (numpy.tril( numpy.ones(Xw[:,:,0].shape)))
 		m0 = Z.shape[1]
 		self.discard = int(m0+self.num_population*numpy.floor(self.n_burnin/self.n_thin))
 		mZ = Z.shape[1]
@@ -273,12 +279,16 @@ class DEMC_sampler(object):
 		rr = 0.0 ; r_extra = 0#numpy.log(0.)
 		#print int(m0+num_population*numpy.floor(n_burnin/n_thin))
 		#Calculate the starting posteriors...
-		Z_diagnostic = numpy.zeros ( (Npar, self.num_population, self.n_generations))
-
-		logfitness_x = [ self.fitness(X[:,i], Xw[:,:,i]) for i in xrange(self.num_population) ]
-
+		logfitness_x = [ self.fitness(X[:,i], Xw[:,:,i]) \
+								for i in xrange(self.num_population) ]
+		# The diagnostic matrix
+		#Augmented by the relevant elements of the covariance matrix
+		Z_diagnostic = numpy.zeros ( (Npar+diag_elements[0].shape[0],\
+				 self.num_population, self.n_generations))
 		#Start of main loop
 		iteration = -1
+		#passer is our variable to add some hysterisis to convergence
+		passer = 0
 		while True:
 			# We clear the acceptance counter
 			accepti = 0
@@ -338,7 +348,11 @@ class DEMC_sampler(object):
 					X[:,i] = x_prop
 					Xw[:,:,i] = xw_prop
 					logfitness_x[i] = logfitness_x_prop
-				Z_diagnostic [:, i, iteration] = X[:,i]
+				#Store the samples in the diagnostic array
+				#Note that we also add the covar matrix terms.
+				Z_diagnostic [:, i, iteration] = numpy.r_[ X[:,i], \
+						Xw[diag_elements[0], diag_elements[1],i] ]
+				
 			accept[iteration] = accepti
 			iteration += 1
 			#print logfitness_x[i], logfitness_x_prop ,logr,r_extra,accepti,x_prop
@@ -355,20 +369,27 @@ class DEMC_sampler(object):
 				rhat = self.MonitorChains ( Z_diagnostic)
 				print iteration, rhat
 				new_pop = iteration
-				break
-				if rhat<=1.02: break
+				if rhat<=1.3:
+					passer +=1
+				if (passer>=2) and (rhat>1.3):
+					passer -=1
+				if (rhat<=1.3) and (passer>3):
+					break
+				
 				accept = numpy.append ( accept, numpy.zeros (self.n_generations+1), 0)
-				Z_diagnostic = numpy.append(Z_diagnostic, numpy.zeros ((Npar, self.num_population, self.n_generations+1)), 2)
+				Z_diagnostic = numpy.append(Z_diagnostic, \
+					numpy.zeros ((Npar+diag_elements[0].shape[0], \
+					self.num_population, self.n_generations+1)), 2)
 		return (Z, Zw, accept/self.num_population)
 		#return (Z[:,:int(m0+iteration*numpy.floor(self.n_burnin/self.n_thin))], accept/self.num_population)
 
 if __name__=="__main__":
-	DEMC = DEMC_sampler ( 4, n_generations=50000, n_burnin=1, n_thin=1)
-	parameter_list=[['x1', 'scipy.stats.norm(1, 2)'], ['x2', 'scipy.stats.norm(0, 2)']]
+	DEMC = DEMC_sampler ( 7, n_generations=1000, n_burnin=1, n_thin=1)
+	parameter_list=[['x1', 'scipy.stats.norm(3, 1)'], ['x2', 'scipy.stats.uniform(0, 1)']]
 	parameters = ['x1','x2']
 	DEMC.prior_distributions ( parameter_list, parameters )
-	cov=numpy.array([[1,-0.8*numpy.sqrt(3.2)],[-0.8*numpy.sqrt(3.2),3.2]])
-	cov = numpy.array([[1.,0.],[0,1]])
-	DEMC.Wishart_Params ( 2, cov)
-	(Z, Zw) = DEMC.ProposeStartingMatrix ( 10 )
+	cov=numpy.array([[1,0.8*numpy.sqrt(3.2)],[0.8*numpy.sqrt(3.2),3.2]])
+	cov = numpy.array([[1.,0.1],[0.1,1]])
+	DEMC.Wishart_Params ( 3, cov)
+	(Z, Zw) = DEMC.ProposeStartingMatrix ( 35 )
 	(Z_out, Zw_out, accept_rate) = DEMC.demc_zs ( Z, Zw )
