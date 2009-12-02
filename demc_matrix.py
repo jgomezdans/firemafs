@@ -389,7 +389,7 @@ if __name__=="__main__":
 	parameters = ['x1','x2']
 	DEMC.prior_distributions ( parameter_list, parameters )
 	cov=numpy.array([[1,0.8*numpy.sqrt(3.2)],[0.8*numpy.sqrt(3.2),3.2]])
-	cov = numpy.array([[1.,0.1],[0.1,1]])
-	DEMC.Wishart_Params ( 3, cov)
+	#cov = numpy.array([[1.,0.1],[0.1,1]])
+	DEMC.Wishart_Params ( 2, cov)
 	(Z, Zw) = DEMC.ProposeStartingMatrix ( 35 )
 	(Z_out, Zw_out, accept_rate) = DEMC.demc_zs ( Z, Zw )
