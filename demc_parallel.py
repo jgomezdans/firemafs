@@ -266,7 +266,7 @@ class DEMC_sampler(object):
 			
 			
 	def _dump_diags ( self, rhat, param_r, quantiles, iteration ):
-		self._tweet ("Convergence iagnostics @ iteration %s"%iteration)
+		self._tweet ("Convergence diagnostics @ iteration %s"%iteration)
 		self._tweet ("Total rhat: %f"%rhat)
 		for par in xrange(len(self.parameters)):
 			self._tweet ("Param: %s; rhat: %f"%(self.parameters[par],param_r[par]))
@@ -373,7 +373,7 @@ class DEMC_sampler(object):
 
 if __name__=="__main__":
 
-	DEMC = DEMC_sampler ( 24, n_generations=1000, n_burnin=1, n_thin=1, logger="test_me.log")
+	DEMC = DEMC_sampler ( 24, n_generations=1000, n_burnin=100, n_thin=10, logger="test_me.log")
 	parameter_list=[['x1', 'scipy.stats.uniform(-10, 10)'], ['x2', 'scipy.stats.uniform(0, 10)']]
 	parameters = ['x1','x2']
 	DEMC.prior_distributions ( parameter_list, parameters )
