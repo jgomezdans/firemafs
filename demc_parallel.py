@@ -4,6 +4,25 @@ import numpy.linalg
 import scipy.stats
 import sys, pdb
 from time import time
+import multiprocessing
+import copy_reg
+import types
+
+def pickle_method( method):
+	func_name = method.im_func.__name__
+	obj = method.im_self
+	cls = method.im_class
+	return unpickle_method, (func_name, obj, cls)
+	
+def unpickle_method(func_name, obj, cls):
+	for cls in cls.mro():
+		try:
+			func = cls.__dict__[func_name]
+		except KeyError:
+			pass
+		else:
+			break
+	return func.__get__(obj, cls)
 
 
 def full_gauss_den(x, mu, va, log):
@@ -74,6 +93,7 @@ class DEMC_sampler(object):
 		self.n_burnin =n_burnin
 		self.eps_mult = eps_mult
 		self.eps_add = eps_add
+
 		if logger==True:
 			print "Logging by default to ./DEMC_ZS.log"
 			logFile = "./DEMC_ZS.log"
@@ -84,6 +104,7 @@ class DEMC_sampler(object):
 		if logger==None:
 			self.logger = None
 		self._tweet ("Started simulation!")
+
 	def _tweet ( self, message ):
 		if self.logger<>None:
 			import time
@@ -174,56 +195,51 @@ class DEMC_sampler(object):
 		if numpy.isneginf(p):
 			p = numpy.log(1.0E-300)
 		return p
-		####x1 = theta[0] ; x2 = theta[1]
-		###sigma1=1.0
-		###sigma2=2.0
-		###mu1=-5.0
-		###mu2=5.0
-		###ret=1.0/numpy.sqrt(2*numpy.pi*sigma1**2) * numpy.exp(-1/(2*sigma1**2) * (mu1-x1)**2)\
-		###*1/numpy.sqrt(2*numpy.pi*sigma2**2) * numpy.exp(-1/(2*sigma2**2) * (mu2-x2)**2) ;
-		###return numpy.log(ret)
 
 	def fitness ( self, theta ):
 		"""
 		The new posterior probability in log. Convenience, really
 		"""
 		return self.likelihood_function ( theta ) + self.prior_probabilities ( theta )
-		
-	###def MonitorChains ( self, x ):
-		###alpha = 0.05                     # 95% intervals
-		###(n, m) = x.shape
-		###xdot = numpy.mean ( x, axis=0)
-		###s2 = numpy.var ( x, axis=0)
-		###W = numpy.mean(s2)
-		###B = n*numpy.var(xdot)
-		###muhat = numpy.mean(xdot)
-		###varW = numpy.var ( s2 )/m
-		###varB = (B**2)*2/(m-1.)
-		###covWB = (n/m)*(numpy.cov ( s2, xdot**2)-2.*muhat*numpy.cov(s2,xdot))
-		###sig2hat = ((n-1)*W+B)/n
-		###quantiles =[ scipy.stats.scoreatpercentile ( x.flatten(1), percentile) for percentile in [2.5, 25., 50., 75., 97.5] ]
-		###quantiles = numpy.array ( quantiles )
-		####pdb.set_trace()
-		###if (W>1.e-8): # Non-degenerate case
-			###postvar = sig2hat + B/(m*n)
-			###varpostvar = max ( 0, ((((n-1)**2)*varW + (1+1/m)**2*varB + 2.*(n-1)*(1+1/m)*covWB)/n**2)[0,0]) # CHECK!
-			###post_df = min ( 2*(postvar**2/varpostvar), 1000)
-			###post_range = muhat + numpy.sqrt ( postvar ) *scipy.stats.t.ppf ( 1-alpha/2, post_df)*numpy.array([-1,0,1])
-			###verlo_df = 2*(W**2/varW)
-			###confshrink_range = numpy.sqrt  ( numpy.array([ postvar/W, (n-1)/n + (1+1/m)*(1/n)*(B/W)*scipy.stats.f.ppf ( 97.5, m-1, verlo_df)])*(post_df+3)/(post_df+1))
-			###n_eff = m*n*min(sig2hat/B,1)
-			###print post_range
-			###print quantiles
-			###print confshrink_range
-			###print n_eff
-			###return ( post_range, quantiles, confshrink_range, n_eff)
-		###else: # Degenerate case
-			###return ( numpy.ones(3), quantiles, numpy.ones(2),1)
-			
-			#varlo.df <- chisqdf (W, varW)
-			#confshrink.range <- sqrt (c(postvar/W,
-			#(n-1)/n + (1+1/m)*(1/n)*(B/W) * qf(.975, m-1, varlo.df)) *
-			#(post.df+3)/(post.df+1))
+
+	def ProposeCandidate ( self, turd):
+		(i, X) = turd
+		#Start of different chains loop
+		#First decide whether this is a snooker update or not
+		if (numpy.random.random()<self.pSnooker):
+			#Snooker update
+			#Select three chains
+			rr = self.choose_without_replacement(self.mZ-1, 3, repeats=None)
+			z = self.Z[:,rr[2]]
+			x_z = X[:,i] - z
+			#Difference between the current point and one of the 3 chains
+			D2 = max(numpy.sum(x_z*x_z), 1.0e-300) # This is the distance. Could do it with dot?
+			gamma_snooker = numpy.random.random()+1.2 # Snooker stochastic
+			proj_diff = numpy.sum((self.Z[:,rr[0]] - self.Z[:,rr[1]])*x_z)/D2 # Project the difference onto x_z. Normalize by x_z's norm
+			x_prop = X[:,i] + (gamma_snooker * proj_diff) * x_z # Proposed point
+			x_z = x_prop - z # update x_z
+			#pdb.set_trace()
+			D2prop = max( numpy.dot(x_z, x_z), 1.0e-30) # Calculate D2prop
+			r_extra = self.Npar12*(numpy.log(D2prop) - numpy.log(D2))
+		else:
+			if (numpy.random.random()<self.pGamma1):
+				gamma_par = self.F1
+			else:
+				gamma_par = self.F2 * numpy.random.uniform( low=1-self.eps_mult,\
+					high=1+self.eps_mult, size=self.Npar)
+			rr = self.choose_without_replacement(self.mZ-1, 2, repeats=None)
+			if (self.eps_add==0):
+				x_prop = X[:,i] + gamma_par * ( self.Z[:,rr[0]] - self.Z[:,rr[1]])
+			else:
+				x_prop = X[:,i] + gamma_par * ( self.Z[:,rr[0]] - self.Z[:,rr[1]]) +\
+					self.eps_add*numpy.random.randn(self.Npar)
+			r_extra = 0
+		logfitness_x_prop = self.fitness ( x_prop )
+		return ( x_prop, logfitness_x_prop, r_extra )
+
+	def f(self, x):
+		return x*2
+
 	def MonitorChains ( self, X ):
 		(Npar, I, T2) = X.shape # (number of parameters, number of chains, number of iterations)
 		T = T2/2 # Only use the latter half of the itarations. Deals with burn-in issues
@@ -279,13 +295,19 @@ class DEMC_sampler(object):
 		d = 2
 		npass = 0
 		X = Z[:,:self.num_population]
+		self.Z = Z
 		m0 = Z.shape[1]
 		self.discard = int(m0+self.num_population*numpy.floor(self.n_burnin/self.n_thin))
 		mZ = Z.shape[1]
+		self.mZ = mZ
 		Npar = X.shape[0]
+		self.Npar = Npar
 		Npar12 = (Npar-1)/2. # Factor for Metropolis ratio DE snooker update
+		self.Npar12 = Npar12
 		F2 = self.F/numpy.sqrt ( 2.*Npar)
 		F1 = 1.0
+		self.F2 = F2
+		self.F1 = F1
 		accept = numpy.zeros ( self.n_generations )
 		#iseq = numpy.arange(1, num_population)
 		rr = 0.0 ; r_extra = 0
@@ -296,39 +318,22 @@ class DEMC_sampler(object):
 		#Start of main loop
 		iteration = -1
 		T0 = time()
+		#Required for running class methods in parallel
+		# See http://stackoverflow.com/questions/1816958/cant-pickle-type-instancemethod-when-using-pythons-multiprocessing-pool-map
+		copy_reg.pickle(types.MethodType, pickle_method, unpickle_method)
+		pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
 		while True:
 			# We clear the acceptance counter
 			accepti = 0
-			for i in xrange(self.num_population):
-				#Start of different chains loop
-				#First decide whether this is a snooker update or not
-				if (numpy.random.random()<self.pSnooker):
-					#Snooker update
-					#Select three chains
-					rr = self.choose_without_replacement(mZ-1, 3, repeats=None)
-					z = Z[:,rr[2]]
-					x_z = X[:,i] - z
-					#Difference between the current point and one of the 3 chains
-					D2 = max(numpy.sum(x_z*x_z), 1.0e-300) # This is the distance. Could do it with dot?
-					gamma_snooker = numpy.random.random()+1.2 # Snooker stochastic
-					proj_diff = numpy.sum((Z[:,rr[0]] - Z[:,rr[1]])*x_z)/D2 # Project the difference onto x_z. Normalize by x_z's norm
-					x_prop = X[:,i] + (gamma_snooker * proj_diff) * x_z # Proposed point
-					x_z = x_prop - z # update x_z
-					#pdb.set_trace()
-					D2prop = max( numpy.dot(x_z, x_z), 1.0e-30) # Calculate D2prop
-					r_extra = Npar12*(numpy.log(D2prop) - numpy.log(D2))
-				else:
-					if (numpy.random.random()<self.pGamma1):
-						gamma_par = F1
-					else:
-						gamma_par = F2 * numpy.random.uniform( low=1-self.eps_mult, high=1+self.eps_mult, size=Npar)
-					rr = self.choose_without_replacement(mZ-1, 2, repeats=None)
-					if (self.eps_add==0):
-						x_prop = X[:,i] + gamma_par * ( Z[:,rr[0]] - Z[:,rr[1]])
-					else:
-						x_prop = X[:,i] + gamma_par * ( Z[:,rr[0]] - Z[:,rr[1]]) + self.eps_add*numpy.random.randn(Npar)
-					r_extra = 0
-				logfitness_x_prop = self.fitness ( x_prop )
+			results =[]
+			###r = pool.map_async(self.ProposeCandidate, zip( numpy.arange(self.num_population),\
+					###X), callback=results.append )
+			###r.wait()
+			
+			###print results
+			for i in xrange ( self.num_population):
+				turd = self.ProposeCandidate ( (i, X))
+				(x_prop, logfitness_x_prop, r_extra) = turd
 				logr = logfitness_x_prop - logfitness_x[i]
 				if (logr + r_extra)>numpy.log ( numpy.random.random()):
 					accepti += 1
@@ -367,14 +372,15 @@ class DEMC_sampler(object):
 		return (Z[:,:int(m0+iteration*numpy.floor(self.n_burnin/self.n_thin))], accept/self.num_population)
 
 if __name__=="__main__":
-	DEMC = DEMC_sampler ( 10, n_generations=100, n_burnin=1, n_thin=1, logger="test_me.log")
-	parameter_list=[['x1', 'scipy.stats.norm(-100, 20)'], ['x2', 'scipy.stats.norm(-100, 20)']]
+
+	DEMC = DEMC_sampler ( 24, n_generations=1000, n_burnin=1, n_thin=1, logger="test_me.log")
+	parameter_list=[['x1', 'scipy.stats.uniform(-10, 10)'], ['x2', 'scipy.stats.uniform(0, 10)']]
 	parameters = ['x1','x2']
 	DEMC.prior_distributions ( parameter_list, parameters )
 	Z = DEMC.ProposeStartingMatrix ( 150 )
 	(Z_out, accept_rate) = DEMC.demc_zs ( Z )
 	import pylab
-	pylab.figure();pylab.plot ( Z_out[0,:], Z_out[1,:], 'k,')
-	pylab.figure();pylab.hist(Z_out[0,:],bins=10);pylab.hist(Z_out[1,:],bins=10);
-	pylab.figure();pylab.hexbin(Z_out[0,:], Z_out[1,:], bins='log')
-	pylab.show()
+	#pylab.figure();pylab.plot ( Z_out[0,:], Z_out[1,:], 'k,')
+	#pylab.figure();pylab.hist(Z_out[0,:],bins=10);pylab.hist(Z_out[1,:],bins=10);
+	#pylab.figure();pylab.hexbin(Z_out[0,:], Z_out[1,:], bins='log')
+	#pylab.show()
