@@ -4,7 +4,7 @@ import numpy.linalg
 import scipy.stats
 import sys, pdb
 from time import time
-import multiprocessing
+import multiprocessing, logging
 import copy_reg
 import types
 
@@ -204,13 +204,16 @@ class DEMC_sampler(object):
 
 	def ProposeCandidate ( self, turd):
 		(i, X) = turd
+		#pdb.set_trace()
 		#Start of different chains loop
 		#First decide whether this is a snooker update or not
 		if (numpy.random.random()<self.pSnooker):
 			#Snooker update
 			#Select three chains
 			rr = self.choose_without_replacement(self.mZ-1, 3, repeats=None)
+			
 			z = self.Z[:,rr[2]]
+			
 			x_z = X[:,i] - z
 			#Difference between the current point and one of the 3 chains
 			D2 = max(numpy.sum(x_z*x_z), 1.0e-300) # This is the distance. Could do it with dot?
@@ -235,6 +238,7 @@ class DEMC_sampler(object):
 					self.eps_add*numpy.random.randn(self.Npar)
 			r_extra = 0
 		logfitness_x_prop = self.fitness ( x_prop )
+		#print x_prop, logfitness_x_prop, r_extra
 		return ( x_prop, logfitness_x_prop, r_extra )
 
 	def f(self, x):
@@ -266,7 +270,7 @@ class DEMC_sampler(object):
 			
 			
 	def _dump_diags ( self, rhat, param_r, quantiles, iteration ):
-		self._tweet ("Convergence diagnostics @ iteration %s"%iteration)
+		self._tweet ("Convergence iagnostics @ iteration %s"%iteration)
 		self._tweet ("Total rhat: %f"%rhat)
 		for par in xrange(len(self.parameters)):
 			self._tweet ("Param: %s; rhat: %f"%(self.parameters[par],param_r[par]))
@@ -295,6 +299,7 @@ class DEMC_sampler(object):
 		d = 2
 		npass = 0
 		X = Z[:,:self.num_population]
+		print X.shape, self.num_population
 		self.Z = Z
 		m0 = Z.shape[1]
 		self.discard = int(m0+self.num_population*numpy.floor(self.n_burnin/self.n_thin))
@@ -321,18 +326,36 @@ class DEMC_sampler(object):
 		#Required for running class methods in parallel
 		# See http://stackoverflow.com/questions/1816958/cant-pickle-type-instancemethod-when-using-pythons-multiprocessing-pool-map
 		copy_reg.pickle(types.MethodType, pickle_method, unpickle_method)
-		pool = multiprocessing.Pool(processes=multiprocessing.cpu_count())
+
+		#logger = multiprocessing.log_to_stderr()
+		#logger.setLevel(logging.DEBUG)
+		#logger.warning('doomed')
+		#m = multiprocessing.Manager()
+		pool = multiprocessing.Pool(processes=16)
 		while True:
 			# We clear the acceptance counter
 			accepti = 0
 			results =[]
-			###r = pool.map_async(self.ProposeCandidate, zip( numpy.arange(self.num_population),\
-					###X), callback=results.append )
-			###r.wait()
+			#r = pool.map_async(self.ProposeCandidate, zip( numpy.arange(self.num_population),\
+					#X), callback=results.append )
+			#print r.successful()
+			#r.wait(timeout=10)
+			r=pool.map_async(self.ProposeCandidate, enumerate(self.num_population*[X]),8,results.append )
+			r.wait(timeout=120)
+			#pool.close()
+			#pool.join()
+
+			#results = map(self.ProposeCandidate, enumerate(self.num_population*[X]))
 			
-			###print results
+			#for (i,equis) in enumerate(24*[X]):
+				#a=self.ProposeCandidate ( (i,equis))
+				#results.append (a)
+			#print results
+			#pdb.set_trace()
+
 			for i in xrange ( self.num_population):
-				turd = self.ProposeCandidate ( (i, X))
+				turd = results[0][i]#self.ProposeCandidate ( (i, X))
+				#turd = results[i]#self.ProposeCandidate ( (i, X))
 				(x_prop, logfitness_x_prop, r_extra) = turd
 				logr = logfitness_x_prop - logfitness_x[i]
 				if (logr + r_extra)>numpy.log ( numpy.random.random()):
@@ -349,11 +372,12 @@ class DEMC_sampler(object):
 				T0 = time()
 			#print logfitness_x[i], logfitness_x_prop ,logr,r_extra,accepti,x_prop
 			if iteration%self.n_thin==0:
-				Z = numpy.c_[X,Z]
+				self.Z = numpy.c_[X,self.Z]
 				mZ = Z.shape[1]
+				self.mZ = mZ
 				#print "iteration ",iteration
-				#print "\t",X[0,:]
-				#print "\t",X[1,:]
+				#print "\t",-2.*numpy.log(X[0,:])
+				
 			if (iteration% (self.n_generations)==0) and iteration>0:
 				( rhat, param_r, quantiles ) = self.MonitorChains ( Z_diagnostic)
 				self._dump_diags ( rhat, param_r, quantiles, iteration )
@@ -369,18 +393,18 @@ class DEMC_sampler(object):
 
 		self._tweet ("Finished simulation!")
 		self._tweet ( "Returned %d samples"%int(m0+iteration*numpy.floor(self.n_burnin/self.n_thin)))
-		return (Z[:,:int(m0+iteration*numpy.floor(self.n_burnin/self.n_thin))], accept/self.num_population)
+		return (self.Z[:,:int(m0+iteration*numpy.floor(self.n_burnin/self.n_thin))], accept/self.num_population)
 
 if __name__=="__main__":
 
-	DEMC = DEMC_sampler ( 24, n_generations=1000, n_burnin=100, n_thin=10, logger="test_me.log")
+	DEMC = DEMC_sampler ( 24, n_generations=1000, n_burnin=1, n_thin=1, logger="test_me.log")
 	parameter_list=[['x1', 'scipy.stats.uniform(-10, 10)'], ['x2', 'scipy.stats.uniform(0, 10)']]
 	parameters = ['x1','x2']
 	DEMC.prior_distributions ( parameter_list, parameters )
 	Z = DEMC.ProposeStartingMatrix ( 150 )
 	(Z_out, accept_rate) = DEMC.demc_zs ( Z )
 	import pylab
-	#pylab.figure();pylab.plot ( Z_out[0,:], Z_out[1,:], 'k,')
-	#pylab.figure();pylab.hist(Z_out[0,:],bins=10);pylab.hist(Z_out[1,:],bins=10);
-	#pylab.figure();pylab.hexbin(Z_out[0,:], Z_out[1,:], bins='log')
-	#pylab.show()
+	pylab.figure();pylab.plot ( Z_out[0,:], Z_out[1,:], 'k,')
+	pylab.figure();pylab.hist(Z_out[0,:],bins=10);pylab.hist(Z_out[1,:],bins=10);
+	pylab.figure();pylab.hexbin(Z_out[0,:], Z_out[1,:], bins='log')
+	pylab.show()
